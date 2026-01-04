@@ -124,16 +124,18 @@ export default function DashboardPage() {
                                 <p className="text-xs text-muted-foreground">基于已分析的会话</p>
                             </CardContent>
                         </Card>
-                        <Card className="glass-card hover:border-primary/50 transition-colors">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">操作</CardTitle>
-                                <Settings className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-sm font-medium">配置偏好</div>
-                                <div className="text-sm font-medium text-muted-foreground">更新简历与设置</div>
-                            </CardContent>
-                        </Card>
+                        <Link href="/graph" className="block h-full">
+                            <Card className="glass-card hover:border-primary/50 transition-colors cursor-pointer h-full group">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">知识图谱</CardTitle>
+                                    <div className="h-4 w-4 text-purple-400 group-hover:animate-pulse">●</div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold font-heading text-purple-400">Knowledge</div>
+                                    <p className="text-xs text-muted-foreground">查看您的技能宇宙</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
                     </div>
 
                     {/* Recent Activity */}

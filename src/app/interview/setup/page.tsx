@@ -63,9 +63,19 @@ export default function InterviewSetupPage() {
             setCurrentStep(curr => curr + 1);
         } else {
             // Start Interview
-            // Create session here to persist full config (including large JD) to DB
             if (user) {
                 try {
+                    // 1. Start Graph Sync (Server Action) - Fire and await to ensure context exists
+                    if (resumeText || jd) {
+                        try {
+                            const { syncGraphAction } = await import("@/app/actions/graph");
+                            await syncGraphAction(user.uid, resumeText, jd);
+                        } catch (err) {
+                            console.error("Graph sync failed, continuing anyway", err);
+                        }
+                    }
+
+                    // 2. Create Session
                     const sessionId = await createSession(user.uid, {
                         role,
                         difficulty,
@@ -80,7 +90,6 @@ export default function InterviewSetupPage() {
                     router.push(`/interview/room?role=${encodeURIComponent(role)}&diff=${difficulty}`);
                 }
             } else {
-                // No user, fallback
                 router.push(`/interview/room?role=${encodeURIComponent(role)}&diff=${difficulty}`);
             }
         }

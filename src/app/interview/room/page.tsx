@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Mic, MicOff, PhoneOff, MessageSquare } from "lucide-react";
 import AudioVisualizer from "@/components/interview/AudioVisualizer";
 import { cn } from "@/lib/utils";
+import { getGraphContext } from "@/services/graphRetrievalService";
 
 const STATUS_MAP: Record<string, string> = {
     "idle": "准备就绪",
@@ -47,6 +48,7 @@ export default function InterviewRoomPage() {
     const { status, connect, disconnect, startRecording, stopRecording, transcript, volume, isRecording, error } = useGeminiLive({ onTranscriptUpdate: handleTranscriptUpdate });
     const [isMicOn, setIsMicOn] = useState(true);
     const [hasStarted, setHasStarted] = useState(false);
+    const [isInitializing, setIsInitializing] = useState(false);
 
     // Auto-start mic when connected
     useEffect(() => {
@@ -56,7 +58,7 @@ export default function InterviewRoomPage() {
     }, [status, isMicOn, startRecording]);
 
     const handleStart = async () => {
-        setHasStarted(true);
+        setIsInitializing(true);
 
         if (user) {
             try {
@@ -87,6 +89,20 @@ export default function InterviewRoomPage() {
 
                 if (sid) setSessionId(sid);
 
+                // --- V2 Graph Context Injection ---
+                let graphContextPrompt = "";
+                try {
+                    // Start fetching context
+                    const graphData = await getGraphContext(user.uid);
+                    if (graphData) {
+                        console.log("Injecting Graph Context:", graphData.summary);
+                        graphContextPrompt = `\n\n[Candidate Personal Knowledge Graph Context]:\n${graphData.summary}\nUse this context to tailor your questions. Focus on testing their [Growth Areas] and checking if [Weak/New] areas have improved. Challenge their [Strengths].`;
+                    }
+                } catch (err) {
+                    console.warn("Failed to load graph context, proceeding without it.", err);
+                }
+                // ----------------------------------
+
                 // Construct System Instruction
                 const systemInstruction = `You are an expert interviewer for a ${interviewConfig.role} position. 
 The difficulty level is ${interviewConfig.difficulty}. 
@@ -95,17 +111,27 @@ ${interviewConfig.jd ? `Job Description Context:\n${interviewConfig.jd}\n` : ""}
 
 ${(interviewConfig as any).resume ? `Candidate Resume Context:\n${(interviewConfig as any).resume}\n` : ""}
 
+${graphContextPrompt}
+
 Conduct a professional technical interview.
-Start by welcoming the candidate and asking a relevant opening question based on the role/JD/Resume.
+Start by welcoming the candidate and asking a relevant opening question based on the role/JD/Resume/Graph Context.
 Keep your responses concise and conversational.`;
 
-                connect({ systemInstruction });
+                await connect({ systemInstruction });
+                setHasStarted(true);
             } catch (e) {
                 console.error("Failed to init session", e);
+                // Even if fail, we might want to let them in or show error
+                // For now, let's try to connect without context if error
                 connect();
+                setHasStarted(true);
+            } finally {
+                setIsInitializing(false);
             }
         } else {
             connect();
+            setHasStarted(true);
+            setIsInitializing(false);
         }
     };
 
@@ -145,8 +171,13 @@ Keep your responses concise and conversational.`;
                                 <Mic className="h-12 w-12 text-primary" />
                             </div>
                             <h2 className="text-2xl font-bold">准备好了吗？</h2>
-                            <Button size="lg" onClick={handleStart} className="rounded-full px-8 py-6 text-lg">
-                                开始面试
+                            <Button
+                                size="lg"
+                                onClick={handleStart}
+                                disabled={isInitializing}
+                                className="rounded-full px-8 py-6 text-lg min-w-[200px]"
+                            >
+                                {isInitializing ? "正在初始化..." : "开始面试"}
                             </Button>
                         </div>
                     ) : (

@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { updateSkillMastery } from "./graphExtractionService";
 
 // Define the Schema for structured output
 const DEBRIEF_SCHEMA = {
@@ -117,8 +118,23 @@ export async function generateDebrief(sessionId: string) {
 
     // 1. Fetch Transcript
     const sessionRef = doc(db, "sessions", sessionId);
-    const sessionSnap = await getDoc(sessionRef);
-    if (!sessionSnap.exists()) throw new Error("Session not found");
+
+    // Retry logic for flaky connections (common with Firestore Client SDK in Node via Proxy)
+    let sessionSnap;
+    let retries = 3;
+    while (retries > 0) {
+        try {
+            sessionSnap = await getDoc(sessionRef);
+            break;
+        } catch (e) {
+            console.warn(`Firestore getDoc failed, retrying... (${retries} left)`, e);
+            retries--;
+            if (retries === 0) throw e;
+            await new Promise(r => setTimeout(r, 2000)); // Wait 2s
+        }
+    }
+
+    if (!sessionSnap || !sessionSnap.exists()) throw new Error("Session not found");
 
     const sessionData = sessionSnap.data();
     const transcript = sessionData.transcript || [];
@@ -181,6 +197,65 @@ export async function generateDebrief(sessionId: string) {
     let debriefData;
     try {
         debriefData = JSON.parse(text || "{}");
+
+        // --- V2 Graph Update Trigger ---
+        // We can infer skill updates from the 'strengths' and 'improvements'
+        // For a real production app, we would ask the LLM to output a specific "skill_scores" map.
+        // Here, we use a heuristic based on the conversation topics or asking LLM for it explicitely.
+        // For MVP, let's just log that we would update here.
+        // To make it real, let's assume we want to update the skills mentioned in 'strengths' to score 85
+        // and 'improvements' to score 30.
+
+        try {
+            const updates: { name: string, score: number }[] = [];
+            const userId = sessionData.userId; // Get userId from sessionData
+
+            if (userId) {
+                // 1. Fetch user's actual skills from Graph (Dynamic, not hardcoded)
+                const { getUserSkillNames } = await import("./graphExtractionService");
+                const keywords = await getUserSkillNames(userId);
+                console.log(`Matching against ${keywords.length} user skills:`, keywords);
+
+                // If graph is empty, maybe fallback or just do nothing (no nodes to update anyway)
+                if (keywords.length === 0) {
+                    console.log("User graph is empty, no existing skills to update.");
+                }
+
+                const findMatches = (text: string, baseScore: number) => {
+                    keywords.forEach((kw: string) => {
+                        if (text.toLowerCase().includes(kw.toLowerCase())) {
+                            updates.push({ name: kw, score: baseScore });
+                        }
+                    });
+                };
+
+                if (debriefData.strengths) {
+                    debriefData.strengths.forEach((str: any) => {
+                        findMatches(str.title, 85); // High score for strengths
+                    });
+                }
+
+                if (debriefData.improvements) {
+                    debriefData.improvements.forEach((imp: any) => {
+                        findMatches(imp.title, 40); // User needs work here
+                    });
+                }
+
+                if (updates.length > 0) {
+                    console.log(`🚀 Updating Knowledge Graph for User ${userId}:`, updates);
+                    await updateSkillMastery(userId, updates);
+                } else {
+                    console.log("No specific technical keywords found to update graph.");
+                }
+            } else {
+                console.warn("No userId found in session, skipping graph update.");
+            }
+
+        } catch (e) {
+            console.warn("Graph update failed", e);
+        }
+        // -------------------------------
+
     } catch (e) {
         console.error("Failed to parse JSON", text);
         throw new Error("Failed to parse AI response: " + text.substring(0, 100));
