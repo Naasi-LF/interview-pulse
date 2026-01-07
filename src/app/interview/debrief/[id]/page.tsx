@@ -148,11 +148,29 @@ export default function DebriefPage({ params }: { params: Promise<{ id: string }
                                 </div>
                                 <div>
                                     <div className="flex justify-between text-sm mb-1">
+                                        <span>技术深度</span>
+                                        <span className="font-bold">{debrief.scores?.technical_depth}/100</span>
+                                    </div>
+                                    <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                                        <div className="h-full bg-cyan-500" style={{ width: `${debrief.scores?.technical_depth}%` }} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-sm mb-1">
                                         <span>沟通表达</span>
                                         <span className="font-bold">{debrief.scores?.communication_structure_star}/100</span>
                                     </div>
                                     <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                                         <div className="h-full bg-purple-500" style={{ width: `${debrief.scores?.communication_structure_star}%` }} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span>逻辑呈现</span>
+                                        <span className="font-bold">{debrief.scores?.delivery}/100</span>
+                                    </div>
+                                    <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                                        <div className="h-full bg-pink-500" style={{ width: `${debrief.scores?.delivery}%` }} />
                                     </div>
                                 </div>
                                 <div>
@@ -183,6 +201,40 @@ export default function DebriefPage({ params }: { params: Promise<{ id: string }
                                     </p>
                                 </CardContent>
                             </Card>
+                        </section>
+
+                        {/* Q&A Highlights - NEW */}
+                        <section>
+                            <h3 className="text-xl font-bold mb-4 flex items-center font-heading text-purple-400">
+                                <MessageSquare className="mr-2 h-5 w-5" /> 核心问答回顾
+                            </h3>
+                            <div className="space-y-4">
+                                {debrief.q_and_a?.map((qa: any, i: number) => (
+                                    <Card key={i} className="glass-card hover:bg-white/5 transition-colors">
+                                        <CardContent className="p-6">
+                                            <div className="flex flex-col gap-4">
+                                                <div>
+                                                    <div className="text-xs font-semibold uppercase tracking-wider text-purple-400 mb-1">面试官提问</div>
+                                                    <h4 className="text-lg font-medium text-white/90">{qa.question}</h4>
+                                                </div>
+                                                <div className="pl-4 border-l-2 border-white/10">
+                                                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">你的回答摘要</div>
+                                                    <p className="text-sm text-gray-300">{qa.answer_summary}</p>
+                                                </div>
+                                                <div className="bg-purple-500/10 p-3 rounded-lg border border-purple-500/20">
+                                                    <div className="text-xs font-semibold uppercase tracking-wider text-purple-300 mb-1">AI 点评</div>
+                                                    <p className="text-xs text-purple-200">{qa.feedback}</p>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                                {(!debrief.q_and_a || debrief.q_and_a.length === 0) && (
+                                    <div className="p-6 text-center text-muted-foreground bg-white/5 rounded-lg border border-dashed border-white/10">
+                                        本次面试没有提取到明显的问答对。
+                                    </div>
+                                )}
+                            </div>
                         </section>
 
                         {/* Strengths */}

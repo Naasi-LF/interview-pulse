@@ -99,10 +99,32 @@ const DEBRIEF_SCHEMA = {
                 }
             }
         },
+        q_and_a: {
+            type: "ARRAY",
+            items: {
+                type: "OBJECT",
+                properties: {
+                    question: { type: "STRING" },
+                    answer_summary: { type: "STRING" },
+                    feedback: { type: "STRING" }
+                }
+            }
+        },
+        skill_updates: {
+            type: "ARRAY",
+            items: {
+                type: "OBJECT",
+                properties: {
+                    skill_name: { type: "STRING" },
+                    new_score: { type: "INTEGER" },
+                    reason: { type: "STRING" }
+                }
+            }
+        },
         next_interview_checklist: { type: "ARRAY", items: { type: "STRING" } },
         notes_if_low_data: { type: "STRING" }
     },
-    required: ["session_summary", "conversation_summary", "scores", "strengths", "improvements", "delivery_metrics", "moments_that_mattered", "next_interview_checklist"]
+    required: ["session_summary", "conversation_summary", "scores", "strengths", "improvements", "delivery_metrics", "moments_that_mattered", "q_and_a", "skill_updates", "next_interview_checklist"]
 };
 
 export async function generateDebrief(sessionId: string) {
@@ -116,10 +138,10 @@ export async function generateDebrief(sessionId: string) {
 
     const client = new GoogleGenAI({ apiKey });
 
-    // 1. Fetch Transcript
+    // 1. Fetch Request Context
     const sessionRef = doc(db, "sessions", sessionId);
 
-    // Retry logic for flaky connections (common with Firestore Client SDK in Node via Proxy)
+    // Retry logic for flaky connections
     let sessionSnap;
     let retries = 3;
     while (retries > 0) {
@@ -130,7 +152,7 @@ export async function generateDebrief(sessionId: string) {
             console.warn(`Firestore getDoc failed, retrying... (${retries} left)`, e);
             retries--;
             if (retries === 0) throw e;
-            await new Promise(r => setTimeout(r, 2000)); // Wait 2s
+            await new Promise(r => setTimeout(r, 2000));
         }
     }
 
@@ -139,19 +161,33 @@ export async function generateDebrief(sessionId: string) {
     const sessionData = sessionSnap.data();
     const transcript = sessionData.transcript || [];
     const config = sessionData.config || {};
+    const userId = sessionData.userId;
+
+    // Fetch existing graph skills for context (AI needs this to know what to update)
+    let graphContext = { direct: [] as string[], related: [] as string[] };
+    if (userId) {
+        try {
+            const { getUserGraphContext } = await import("./graphExtractionService");
+            graphContext = await getUserGraphContext(userId);
+            console.log(`Knowledge Graph Context: ${graphContext.direct.length} direct, ${graphContext.related.length} related found.`);
+        } catch (e) {
+            console.warn("Failed to fetch user skills for context", e);
+        }
+    }
 
     // Format Transcript
-    const transcriptText = transcript.map((t: any) => `[${t.role}]: ${t.text}`).join("\n");
+    const transcriptText = transcript.map((t: any) => {
+        const speaker = t.role === "user" ? "Candidate" : "Interviewer";
+        return `[${speaker}]: ${t.text}`;
+    }).join("\n");
 
-    // Fallback for Empty Transcript
     if (!transcriptText || transcriptText.trim().length === 0) {
         console.warn("Transcript is empty, generating minimal debrief.");
     }
 
     // 2. Call Gemini
-    // Switched to stable Flash model to avoid experimental timeouts/cancellations
     const response = await client.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash-lite-preview-09-2025",
         contents: [{
             parts: [{
                 text: `
@@ -162,16 +198,28 @@ export async function generateDebrief(sessionId: string) {
                 Difficulty: ${config.difficulty || "Medium"}
                 Job Description: ${config.jd || "Not provided"}
 
+                Candidate's Knowledge Graph Context:
+                - **Confirmed Skills (Mastery)**: ${graphContext.direct.length > 0 ? JSON.stringify(graphContext.direct) : "(None)"}
+                - **Related Concepts (Halo)**: ${graphContext.related.length > 0 ? JSON.stringify(graphContext.related) : "(None)"}
+
                 Transcript:
                 ${transcriptText.length > 0 ? transcriptText : "(No audible conversation recorded)"}
                 
                 Requirements:
                 - **LANGUAGE: OUTPUT MUST BE IN SIMPLIFIED CHINESE (简体中文).**
-                - \`conversation_summary\`: A comprehensive paragraph recounting what was discussed in the interview.
-                - \`improvements\`: Provide **at least 3 to 5** specific improvement items. Do not limit to just 2.
-                - For \`evidence.quote\`: **Convert any Traditional Chinese (Traditional Chinese) from the transcript to Simplified Chinese (Simplified Chinese).** HOWEVER, you MUST PRESERVE the speaker's original speech patterns, interruptions, filler words (e.g. "uhm", "like"), and stammers. Do not correct the grammar or fluency of the quote, only the character set.
-                - CRITICAL: ALL SCORES (overall, role_fit, etc.) MUST BE ON A SCALE OF 0-100. (e.g., 75, 88, 92). Do not use 0-5 or 0-10.
-                - If transcript is short (< 2 turns) or empty, provide score 0-100 (e.g. 10) and explain in notes_if_low_data that the session had no audio.
+                - **Strictly distinguish between the Interivewer (AI) and the Candidate (User).** Only evaluate the Candidate's answers.
+                - \`conversation_summary\`: A comprehensive paragraph recounting what was discussed.
+                - \`q_and_a\`: Extract top 3-5 QA pairs with feedback.
+                - \`skill_updates\`: Based on the Candidate's answers, update the scores (0-100) of their **Existing Skills** listed above. 
+                   - ONLY select skills from the provided list that were actually demonstrated or discussed.
+                   - If a NEW important skill appeared that is NOT in the list, you may include it, but prioritize existing nodes.
+                   - \`new_score\`: 85+ for strong demonstration, <50 for weak spots.
+                - \`improvements\`: Provide **at least 3 to 5** specific improvement items.
+                   - \`better_answer_example\`: **REQUIRED.** Write a "Gold Standard" answer (2-3 sentences) that the candidate *should have said*.
+                   - \`micro_exercise\`: **REQUIRED.** A specific, actionable practice task (e.g. "Write a function to...").
+                   - **Do not leave these fields empty.**
+                - CRITICAL: ALL SCORES (overall, role_fit, etc.) MUST BE ON A SCALE OF 0-100.
+                - If transcript is short (< 2 turns), provide low scores and explain in notes_if_low_data.
                 `
             }]
         }],
@@ -183,10 +231,8 @@ export async function generateDebrief(sessionId: string) {
 
     // Handle response
     let text: string = "";
-
-    // Check for text property (getter)
     if (response.text) {
-        // @ts-ignore - Handle possible getter vs function difference dynamically if needed, but error says getter
+        // @ts-ignore
         text = typeof response.text === 'function' ? (response as any).text() : response.text;
     } else if (response.candidates && response.candidates[0]?.content?.parts?.[0]?.text) {
         text = response.candidates[0].content.parts[0].text;
@@ -198,63 +244,25 @@ export async function generateDebrief(sessionId: string) {
     try {
         debriefData = JSON.parse(text || "{}");
 
-        // --- V2 Graph Update Trigger ---
-        // We can infer skill updates from the 'strengths' and 'improvements'
-        // For a real production app, we would ask the LLM to output a specific "skill_scores" map.
-        // Here, we use a heuristic based on the conversation topics or asking LLM for it explicitely.
-        // For MVP, let's just log that we would update here.
-        // To make it real, let's assume we want to update the skills mentioned in 'strengths' to score 85
-        // and 'improvements' to score 30.
+        // --- V2 Graph Update (AI-Driven) ---
+        if (userId && debriefData.skill_updates && debriefData.skill_updates.length > 0) {
+            try {
+                const updates = debriefData.skill_updates.map((u: any) => ({
+                    name: u.skill_name,
+                    score: u.new_score
+                }));
 
-        try {
-            const updates: { name: string, score: number }[] = [];
-            const userId = sessionData.userId; // Get userId from sessionData
+                console.log(`🚀 AI updating ${updates.length} skills based on interview performance:`, updates);
+                const { updateSkillMastery } = await import("./graphExtractionService");
+                await updateSkillMastery(userId, updates);
 
-            if (userId) {
-                // 1. Fetch user's actual skills from Graph (Dynamic, not hardcoded)
-                const { getUserSkillNames } = await import("./graphExtractionService");
-                const keywords = await getUserSkillNames(userId);
-                console.log(`Matching against ${keywords.length} user skills:`, keywords);
-
-                // If graph is empty, maybe fallback or just do nothing (no nodes to update anyway)
-                if (keywords.length === 0) {
-                    console.log("User graph is empty, no existing skills to update.");
-                }
-
-                const findMatches = (text: string, baseScore: number) => {
-                    keywords.forEach((kw: string) => {
-                        if (text.toLowerCase().includes(kw.toLowerCase())) {
-                            updates.push({ name: kw, score: baseScore });
-                        }
-                    });
-                };
-
-                if (debriefData.strengths) {
-                    debriefData.strengths.forEach((str: any) => {
-                        findMatches(str.title, 85); // High score for strengths
-                    });
-                }
-
-                if (debriefData.improvements) {
-                    debriefData.improvements.forEach((imp: any) => {
-                        findMatches(imp.title, 40); // User needs work here
-                    });
-                }
-
-                if (updates.length > 0) {
-                    console.log(`🚀 Updating Knowledge Graph for User ${userId}:`, updates);
-                    await updateSkillMastery(userId, updates);
-                } else {
-                    console.log("No specific technical keywords found to update graph.");
-                }
-            } else {
-                console.warn("No userId found in session, skipping graph update.");
+            } catch (e) {
+                console.warn("Graph update failed", e);
             }
-
-        } catch (e) {
-            console.warn("Graph update failed", e);
+        } else {
+            console.log("No skill updates returned by AI.");
         }
-        // -------------------------------
+        // -----------------------------------
 
     } catch (e) {
         console.error("Failed to parse JSON", text);

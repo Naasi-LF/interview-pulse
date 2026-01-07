@@ -2,17 +2,21 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { getGraphSession } from "@/lib/graph";
 
-// Initialize Gemini for Graph Extraction
-const llm = new ChatGoogleGenerativeAI({
-    model: "gemini-3-flash-preview",
-    apiKey: process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY,
-    temperature: 0,
-});
+// Initialize Gemini for Graph Extraction lazily
+function getLLM() {
+    return new ChatGoogleGenerativeAI({
+        model: "gemini-2.5-flash-lite-preview-09-2025",
+        apiKey: process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY,
+        temperature: 0,
+    });
+}
 
 interface ExtractedSkill {
     name: string;
-    category: string; // e.g., "Frontend", "Backend", "Language", "Tool"
-    level: string;    // "Expert", "Intermediate", "Beginner" (inferred)
+    category: string;
+    level: string;
+    description?: string; // Short 1-sentence description
+    related_skills?: string[]; // List of related skill names
 }
 
 /**
@@ -26,17 +30,24 @@ export async function extractSkillsFromText(text: string): Promise<ExtractedSkil
     For each skill, determine:
     1. Standardized Name (e.g., "React.js" -> "React", "Amazon Web Services" -> "AWS")
     2. Category (Frontend, Backend, Database, DevOps, Language, Mobile, AI/ML, Other)
-    3. Proficiency Level (Expert, Intermediate, Beginner) based on context clues (years of experience, words like "proficient", "familiar"). Default to "Intermediate" if unsure.
+    3. Proficiency Level (Expert, Intermediate, Beginner)
+    4. **Description**: A very brief, punchy 1-sentence description of what this skill is (in Chinese).
+    5. **Related Skills**: A list of 2-3 other highly related technical concepts or tools that are normally associated with this skill (e.g. React -> [JavaScript, Redux, HTML]).
 
-    Return ONLY a raw JSON array of objects. Do not include markdown formatting (like \`\`\`json).
+    Return ONLY a raw JSON array of objects. Do not include markdown formatting.
     Example:
     [
-      {"name": "React", "category": "Frontend", "level": "Expert"},
-      {"name": "Python", "category": "Language", "level": "Intermediate"}
+      {
+        "name": "React", 
+        "category": "Frontend", 
+        "level": "Expert", 
+        "description": "用于构建用户界面的 JavaScript 库", 
+        "related_skills": ["JavaScript", "Redux", "HTML"]
+      }
     ]
   `;
 
-    const response = await llm.invoke([
+    const response = await getLLM().invoke([
         new SystemMessage(systemPrompt),
         new HumanMessage(text),
     ]);
@@ -63,15 +74,19 @@ export async function saveSkillsToGraph(userId: string, skills: ExtractedSkill[]
             { userId }
         );
 
-        // 2. Batch write skills
-        // We use UNWIND to efficiently batch process lines
-        const cypher = `
+        // 2. Batch write skills and primary relationships
+        const cypherMain = `
       MATCH (u:User {uid: $userId})
       UNWIND $skills AS skill
       
-      // Merge 'Skill' node (Global unique constraint usually on name)
+      // Merge 'Skill' node
       MERGE (s:Skill {name: skill.name})
-      ON CREATE SET s.category = skill.category
+      ON CREATE SET 
+          s.category = skill.category,
+          s.description = skill.description,
+          s.created_at = datetime()
+      ON MATCH SET
+          s.description = skill.description // Update description if better one found
       
       // Merge Relationship: User HAS_SKILL Skill
       MERGE (u)-[r:HAS_SKILL]->(s)
@@ -79,7 +94,24 @@ export async function saveSkillsToGraph(userId: string, skills: ExtractedSkill[]
           r.last_verified = datetime()
     `;
 
-        await session.run(cypher, { userId, skills });
+        await session.run(cypherMain, { userId, skills });
+
+        // 3. Create Peer-to-Peer Skill Relationships (The Semantic Mesh)
+        // We do this in a separate pass to ensure all 'main' nodes are likely created, 
+        // though MERGE handles missing nodes by creating them.
+        const cypherRelations = `
+      UNWIND $skills AS skill
+      UNWIND skill.related_skills AS relatedName
+      
+      MATCH (s:Skill {name: skill.name})
+      MERGE (target:Skill {name: relatedName})
+      
+      // Create undirected concept link (or directed "related to")
+      MERGE (s)-[:RELATED_TO]->(target)
+    `;
+
+        await session.run(cypherRelations, { skills });
+
         console.log(`✅ Graph synced: ${skills.length} skills for User ${userId}`);
 
     } catch (error) {
@@ -173,20 +205,53 @@ export async function updateSkillMastery(userId: string, skillsUpdates: { name: 
 }
 
 /**
- * Retrieves all skill names for a user to enable dynamic keyword matching.
+ * Retrieves user's direct skills AND 1-hop related concepts (The "Knowledge Halo").
+ * This gives the AI context on what the user *might* know or *should* know based on their stack.
  */
-export async function getUserSkillNames(userId: string): Promise<string[]> {
+export async function getUserGraphContext(userId: string): Promise<{ direct: string[], related: string[] }> {
     const session = getGraphSession();
     try {
-        const result = await session.run(
-            `MATCH (u:User {uid: $userId})-[:HAS_SKILL]->(s:Skill) RETURN s.name`,
-            { userId }
-        );
-        return result.records.map(r => r.get("s.name"));
+        // Fetch Direct Skills and their immediate Related concepts
+        const cypher = `
+            MATCH (u:User {uid: $userId})-[:HAS_SKILL]->(s:Skill)
+            
+            // Optional: Find related skills (1 hop away)
+            OPTIONAL MATCH (s)-[:RELATED_TO]-(related:Skill)
+            
+            RETURN s.name as direct, collect(distinct related.name) as related_list
+        `;
+
+        const result = await session.run(cypher, { userId });
+
+        const directSet = new Set<string>();
+        const relatedSet = new Set<string>();
+
+        result.records.forEach(r => {
+            const d = r.get("direct");
+            if (d) directSet.add(d);
+
+            const rels = r.get("related_list"); // Array
+            if (rels) rels.forEach((name: string) => relatedSet.add(name));
+        });
+
+        // Filter: Remove 'related' if it's already in 'direct' (known skill)
+        const direct = Array.from(directSet);
+        const related = Array.from(relatedSet).filter(r => !directSet.has(r));
+
+        return { direct, related };
+
     } catch (e) {
-        console.error("Failed to get user skill names", e);
-        return [];
+        console.error("Failed to get graph context", e);
+        return { direct: [], related: [] };
     } finally {
         await session.close();
     }
+}
+
+/**
+ * Legacy support
+ */
+export async function getUserSkillNames(userId: string): Promise<string[]> {
+    const ctx = await getUserGraphContext(userId);
+    return ctx.direct;
 }

@@ -83,10 +83,14 @@ export default function InterviewSetupPage() {
                         resume: resumeText,
                         timestamp: new Date().toISOString()
                     });
-                    router.push(`/interview/room?sessionId=${sessionId}`);
+
+                    // Redirect to Dashboard instead of Room
+                    // User will manually click "Start" from Dashboard
+                    router.push("/dashboard");
+
                 } catch (e) {
                     console.error("Failed to create session in setup", e);
-                    // Fallback to URL params (lose JD but work)
+                    // Fallback to URL params (lose JD but work) -> Direct entry mainly for dev/error fallback
                     router.push(`/interview/room?role=${encodeURIComponent(role)}&diff=${difficulty}`);
                 }
             } else {

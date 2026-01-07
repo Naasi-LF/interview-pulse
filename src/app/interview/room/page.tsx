@@ -49,6 +49,7 @@ export default function InterviewRoomPage() {
     const [isMicOn, setIsMicOn] = useState(true);
     const [hasStarted, setHasStarted] = useState(false);
     const [isInitializing, setIsInitializing] = useState(false);
+    const [showCaptions, setShowCaptions] = useState(true);
 
     // Auto-start mic when connected
     useEffect(() => {
@@ -188,7 +189,7 @@ Keep your responses concise and conversational.`;
                     )}
 
                     {/* Subtitles Overlay - Single Line */}
-                    {hasStarted && transcript.length > 0 && (
+                    {hasStarted && showCaptions && transcript.length > 0 && (
                         <div className="absolute bottom-32 left-0 right-0 px-8 flex justify-center pointer-events-none z-50">
                             <div className={cn(
                                 "backdrop-blur-md px-8 py-4 rounded-full max-w-2xl text-center shadow-2xl transition-all duration-300 border border-white/10 overflow-hidden whitespace-nowrap",
@@ -223,11 +224,19 @@ Keep your responses concise and conversational.`;
                         >
                             {isMicOn ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
                         </Button>
-                        {/* Placeholder for text mode toggle */}
+
+                        {/* Captions Toggle */}
                         <Button
-                            variant="secondary"
+                            variant={showCaptions ? "secondary" : "ghost"}
                             size="icon"
-                            className="h-14 w-14 rounded-full shadow-lg bg-white/5 hover:bg-white/10"
+                            className={cn(
+                                "h-14 w-14 rounded-full shadow-lg transition-colors border-2",
+                                showCaptions
+                                    ? "bg-white text-black hover:bg-white/90 border-transparent"
+                                    : "bg-transparent text-white/50 border-white/20 hover:bg-white/10 hover:text-white"
+                            )}
+                            onClick={() => setShowCaptions(!showCaptions)}
+                            title={showCaptions ? "隐藏字幕" : "显示字幕"}
                         >
                             <MessageSquare className="h-6 w-6" />
                         </Button>

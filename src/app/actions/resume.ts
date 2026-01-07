@@ -27,7 +27,7 @@ export async function parseResume(formData: FormData) {
         console.log("File converted to base64, sending to Gemini...");
 
         const response = await client.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gemini-2.5-flash-lite-preview-09-2025",
             contents: [{
                 parts: [
                     {

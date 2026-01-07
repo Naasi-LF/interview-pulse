@@ -143,7 +143,7 @@ export function useGeminiLive({ onTranscriptUpdate }: UseGeminiLiveProps = {}) {
                     },
                     onclose: (e: any) => {
                         console.log('[live] onclose', e);
-                        setStatus("Closed");
+                        setStatus(`Closed: ${e.code || ''} ${e.reason || 'Connection lost'}`);
                     }
                 },
                 config: {

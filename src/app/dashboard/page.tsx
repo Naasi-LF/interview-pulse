@@ -9,6 +9,7 @@ import Link from "next/link";
 import AuthGuard from "@/components/auth/AuthGuard";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
     const { user, signOut } = useAuth();
@@ -150,35 +151,50 @@ export default function DashboardPage() {
                             <div className="text-muted-foreground">暂无会话。开始您的第一次面试吧！</div>
                         ) : (
                             <div className="space-y-4">
-                                {stats.recentSessions.map((s) => (
-                                    <Link href={`/interview/debrief/${s.id}`} key={s.id}>
-                                        <Card className="glass-card group cursor-pointer hover:bg-white/5 transition-all">
-                                            <CardContent className="p-6 flex items-center justify-between">
-                                                <div className="flex items-center space-x-4">
-                                                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                                                        {(s.config?.role || "IN").substring(0, 2).toUpperCase()}
+                                {stats.recentSessions.map((s) => {
+                                    const isCompleted = !!s.debrief?.scores?.overall;
+                                    const targetLink = isCompleted ? `/interview/debrief/${s.id}` : `/interview/room?sessionId=${s.id}`;
+
+                                    return (
+                                        <Link href={targetLink} key={s.id}>
+                                            <Card className={cn(
+                                                "glass-card group cursor-pointer transition-all",
+                                                !isCompleted ? "border-primary/50 hover:bg-primary/5" : "hover:bg-white/5"
+                                            )}>
+                                                <CardContent className="p-6 flex items-center justify-between">
+                                                    <div className="flex items-center space-x-4">
+                                                        <div className={cn(
+                                                            "h-10 w-10 rounded-full flex items-center justify-center font-bold",
+                                                            isCompleted ? "bg-primary/20 text-primary" : "bg-yellow-500/20 text-yellow-500"
+                                                        )}>
+                                                            {isCompleted ? (s.config?.role || "IN").substring(0, 2).toUpperCase() : "▶"}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-semibold group-hover:text-primary transition-colors">
+                                                                {s.config?.role || "面试"}
+                                                            </p>
+                                                            <p className="text-sm text-muted-foreground">
+                                                                {s.startTime ? new Date(s.startTime.seconds * 1000).toLocaleDateString("zh-CN") : "近期"}
+                                                                {s.config?.difficulty && ` • ${s.config.difficulty === 'easy' ? '简单' : s.config.difficulty === 'medium' ? '中等' : s.config.difficulty === 'hard' ? '困难' : s.config.difficulty}`}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="font-semibold group-hover:text-primary transition-colors">{s.config?.role || "面试"}</p>
-                                                        <p className="text-sm text-muted-foreground">
-                                                            {s.startTime ? new Date(s.startTime.seconds * 1000).toLocaleDateString("zh-CN") : "近期"}
-                                                            {s.config?.difficulty && ` • ${s.config.difficulty === 'easy' ? '简单' : s.config.difficulty === 'medium' ? '中等' : s.config.difficulty === 'hard' ? '困难' : s.config.difficulty}`}
-                                                        </p>
+                                                    <div className="text-right">
+                                                        {isCompleted ? (
+                                                            <span className="inline-block px-3 py-1 rounded-full bg-green-500/10 text-green-400 text-sm font-medium">
+                                                                Score: {s.debrief.scores.overall}
+                                                            </span>
+                                                        ) : (
+                                                            <div className="flex items-center text-yellow-500 font-medium text-sm animate-pulse">
+                                                                点击开始 <ArrowRight className="ml-1 h-4 w-4" />
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    {s.debrief?.scores?.overall ? (
-                                                        <span className="inline-block px-3 py-1 rounded-full bg-green-500/10 text-green-400 text-sm font-medium">
-                                                            Score: {s.debrief.scores.overall}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-sm text-yellow-500">In Progress / No Score</span>
-                                                    )}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </Link>
-                                ))}
+                                                </CardContent>
+                                            </Card>
+                                        </Link>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

@@ -49,6 +49,12 @@ export default function KnowledgeGraph3D() {
         );
     }, []);
 
+    const [hoverNode, setHoverNode] = useState<any>(null);
+
+    const handleNodeHover = useCallback((node: any) => {
+        setHoverNode(node || null);
+    }, []);
+
     return (
         <div className="relative w-full h-screen bg-black overflow-hidden">
 
@@ -61,6 +67,15 @@ export default function KnowledgeGraph3D() {
                     <ZoomOut className="h-4 w-4" />
                 </Button>
             </div>
+
+            {/* Description Tooltip (Top Left) - Dynamic */}
+            {hoverNode && hoverNode.description && (
+                <div className="absolute top-20 left-8 z-50 max-w-sm p-4 bg-black/60 backdrop-blur-xl rounded-xl border border-primary/30 text-white animate-in slide-in-from-left-4 fade-in duration-200 pointer-events-none">
+                    <div className="text-lg font-bold text-primary mb-1">{hoverNode.name}</div>
+                    <div className="text-sm text-gray-200 leading-relaxed">{hoverNode.description}</div>
+                    <div className="mt-2 text-xs text-muted-foreground uppercase tracking-wider">{hoverNode.label}</div>
+                </div>
+            )}
 
             {/* Legend Overlay */}
             <div className="absolute bottom-8 left-8 z-50 p-4 bg-black/40 backdrop-blur-md rounded-lg border border-white/10 pointer-events-none">
@@ -81,35 +96,39 @@ export default function KnowledgeGraph3D() {
                 </div>
             </div>
 
-            <ForceGraph3D
-                ref={fgRef}
-                graphData={data}
-                nodeLabel="label"
-                nodeColor="color"
-                nodeVal="val"
+            {/* Render Graph only after data is ready to prevent Three.js init errors */}
+            {!loading && data.nodes.length > 0 && (
+                <ForceGraph3D
+                    ref={fgRef}
+                    graphData={data}
+                    nodeLabel="label"
+                    nodeColor="color"
+                    nodeVal="val"
 
-                // Visuals
-                backgroundColor="#000000"
-                showNavInfo={false}
+                    // Visuals
+                    backgroundColor="#000000"
+                    showNavInfo={false}
 
-                // Particles on Links (Data flow effect)
-                linkDirectionalParticles={2}
-                linkDirectionalParticleWidth={2}
-                linkDirectionalParticleSpeed={0.005}
+                    // Particles on Links (Data flow effect)
+                    linkDirectionalParticles={2}
+                    linkDirectionalParticleWidth={2}
+                    linkDirectionalParticleSpeed={0.005}
 
-                // Interaction
-                onNodeClick={handleNodeClick}
+                    // Interaction
+                    onNodeClick={handleNodeClick}
+                    onNodeHover={handleNodeHover} // Added Hover Handler
 
-                nodeThreeObjectExtend={true}
-                nodeResolution={64}
-                nodeThreeObject={(node: any) => {
-                    const sprite = new SpriteText(node.name);
-                    sprite.color = node.color;
-                    sprite.textHeight = 6;
-                    sprite.position.y = 12; // Floating above the node
-                    return sprite;
-                }}
-            />
+                    nodeThreeObjectExtend={true}
+                    nodeResolution={64}
+                    nodeThreeObject={(node: any) => {
+                        const sprite = new SpriteText(node.name);
+                        sprite.color = node.color;
+                        sprite.textHeight = 6;
+                        sprite.position.y = 12; // Floating above the node
+                        return sprite;
+                    }}
+                />
+            )}
         </div>
     );
 }
