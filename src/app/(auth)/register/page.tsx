@@ -30,68 +30,79 @@ export default function RegisterPage() {
     };
 
     return (
-        <Card className="w-full border-none shadow-2xl bg-black/40 backdrop-blur-xl">
-            <CardHeader className="space-y-1">
-                <div className="flex justify-center mb-4">
-                    <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center">
-                        <Sparkles className="h-6 w-6 text-primary" />
+        <Card className="w-full border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] bg-white rounded-[2.5rem] overflow-hidden">
+            <CardHeader className="space-y-4 pt-10 px-10">
+                <div className="flex justify-center mb-2">
+                    <div className="h-16 w-16 rounded-full bg-orange-50 flex items-center justify-center shadow-inner">
+                        <Sparkles className="h-8 w-8 text-primary" />
                     </div>
                 </div>
-                <CardTitle className="text-2xl font-bold text-center tracking-tight font-heading">创建账户</CardTitle>
-                <CardDescription className="text-center">
-                    在下方输入您的邮箱以创建账户
-                </CardDescription>
+                <div className="space-y-2 text-center">
+                    <CardTitle className="text-3xl font-black tracking-tight font-heading text-foreground">创建账户</CardTitle>
+                    <CardDescription className="text-base text-muted-foreground">
+                        开启您的职业成长新篇章
+                    </CardDescription>
+                </div>
             </CardHeader>
-            <CardContent>
-                {error && <div className="mb-4 p-2 text-sm text-red-500 bg-red-500/10 rounded text-center">{error}</div>}
-                <form onSubmit={handleSubmit} className="space-y-4">
+            <CardContent className="px-10 pb-10 space-y-6">
+                {error && (
+                    <div className="p-3 text-sm font-medium text-red-600 bg-red-50 rounded-2xl flex items-center justify-center border border-red-100">
+                        {error}
+                    </div>
+                )}
+                <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="space-y-2">
-                        <Label htmlFor="email">电子邮箱</Label>
+                        <Label htmlFor="email" className="text-foreground/80 font-semibold ml-1">电子邮箱</Label>
                         <Input
                             id="email"
                             type="email"
-                            placeholder="m@example.com"
+                            placeholder="hello@example.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
+                            className="rounded-2xl h-12 bg-gray-50 border-transparent focus:bg-white transition-all pl-4"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="password">密码</Label>
+                        <Label htmlFor="password" className="text-foreground/80 font-semibold ml-1">密码</Label>
                         <Input
                             id="password"
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
+                            className="rounded-2xl h-12 bg-gray-50 border-transparent focus:bg-white transition-all pl-4"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">确认密码</Label>
+                        <Label htmlFor="confirmPassword" className="text-foreground/80 font-semibold ml-1">确认密码</Label>
                         <Input
                             id="confirmPassword"
                             type="password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             required
+                            className="rounded-2xl h-12 bg-gray-50 border-transparent focus:bg-white transition-all pl-4"
                         />
                     </div>
-                    <Button type="submit" className="w-full">
-                        创建账户
+                    <Button type="submit" className="w-full h-14 rounded-full text-lg font-bold shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all mt-2" variant="default">
+                        注册账户
                     </Button>
                 </form>
-                <div className="relative my-4">
+
+                <div className="relative my-6">
                     <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t border-white/10" />
+                        <span className="w-full border-t border-gray-100" />
                     </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-black/40 px-2 text-muted-foreground backdrop-blur-xl">
-                            或者使用以下方式
+                    <div className="relative flex justify-center text-xs uppercase font-bold tracking-wider">
+                        <span className="bg-white px-4 text-gray-400">
+                            或者
                         </span>
                     </div>
                 </div>
-                <Button variant="outline" type="button" className="w-full" onClick={signInWithGoogle}>
-                    <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+
+                <Button variant="outline" type="button" className="w-full h-12 rounded-full border-gray-200 text-gray-600 font-semibold hover:bg-gray-50" onClick={signInWithGoogle}>
+                    <svg className="mr-3 h-5 w-5" viewBox="0 0 24 24">
                         <path
                             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                             fill="#4285F4"
@@ -109,13 +120,13 @@ export default function RegisterPage() {
                             fill="#EA4335"
                         />
                     </svg>
-                    Google
+                    使用 Google 注册
                 </Button>
             </CardContent>
-            <CardFooter>
-                <div className="text-sm text-center w-full text-muted-foreground">
+            <CardFooter className="bg-gray-50/50 p-6 flex justify-center">
+                <div className="text-sm text-center w-full text-gray-500 font-medium">
                     已有账号？{" "}
-                    <Link href="/login" className="text-primary hover:underline font-semibold">
+                    <Link href="/login" className="text-primary hover:text-orange-600 hover:underline font-bold">
                         立即登录
                     </Link>
                 </div>

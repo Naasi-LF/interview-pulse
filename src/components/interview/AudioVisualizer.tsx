@@ -34,12 +34,12 @@ function AnimatedSphere({ isRecording, volume }: { isRecording: boolean, volume:
     return (
         <Sphere ref={meshRef} args={[1, 64, 64]} scale={1.5}>
             <MeshDistortMaterial
-                color={isRecording ? "#8b5cf6" : "#4b5563"} // Violet-500 vs Gray-600
+                color={isRecording ? "#FF8235" : "#E5E5E5"} // Orange vs Light Gray
                 attach="material"
-                distort={isRecording ? 0.3 + (volume * 2) : 0.1} // More distortion when loud
-                speed={isRecording ? 2 + (volume * 5) : 1}
-                roughness={0.2}
-                metalness={0.8}
+                distort={isRecording ? 0.4 + (volume * 1.5) : 0.2}
+                speed={isRecording ? 3 + (volume * 3) : 1}
+                roughness={0.4} // Softer material
+                metalness={0.1} // Less metallic, more organic/matte
             />
         </Sphere>
     );
@@ -49,10 +49,10 @@ export default function AudioVisualizer({ isRecording, volume }: AudioVisualizer
     return (
         <div className="w-full h-full relative">
             <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
-                <ambientLight intensity={0.5} />
-                <directionalLight position={[10, 10, 5]} intensity={1} />
-                <pointLight position={[-10, -10, -5]} intensity={2} color="#ec4899" />
-                <pointLight position={[0, 5, 0]} intensity={1.5} color="#06b6d4" />
+                <ambientLight intensity={0.8} />
+                <directionalLight position={[10, 10, 5]} intensity={1} color="#FFF4E6" />
+                <pointLight position={[-10, -10, -5]} intensity={1} color="#FFCD41" />
+                <pointLight position={[0, 5, 0]} intensity={0.5} color="#FF8235" />
 
                 <AnimatedSphere isRecording={isRecording} volume={volume} />
             </Canvas>

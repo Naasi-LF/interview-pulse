@@ -3,25 +3,36 @@
 @plugin "tailwindcss-animate";
 
 :root {
-  --background: #030014;
-  /* Deep dark blue/black */
-  --foreground: #ffffff;
-  --primary: #4338ca;
-  /* Indigo 700 */
-  --primary-foreground: #e0e7ff;
-  --card: rgba(255, 255, 255, 0.03);
-  --card-foreground: #ffffff;
-  --popover: #030014;
-  --popover-foreground: #ffffff;
-  --muted: rgba(255, 255, 255, 0.05);
-  --muted-foreground: #94a3b8;
-  --accent: rgba(99, 102, 241, 0.1);
-  --accent-foreground: #e0e7ff;
-  --destructive: #7f1d1d;
-  --destructive-foreground: #fef2f2;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.08);
-  --ring: #6366f1;
+  /* Headspace-inspired Palette */
+  --background: #FFFCF5; /* Warm Off-White (Cream) */
+  --foreground: #333333; /* Deep Charcoal */
+
+  --primary: #FF8235; /* Sunset Orange */
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #FFCD41; /* Sun-kissed Yellow */
+  --secondary-foreground: #333333;
+
+  --card: #FFFFFF;
+  --card-foreground: #333333;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #333333;
+
+  --muted: #F2F0E9; /* Warm Gray/Beige */
+  --muted-foreground: #8A8A8A;
+
+  --accent: #FFF4E6; /* Light Orange Tint */
+  --accent-foreground: #FF8235;
+
+  --destructive: #FF6B6B; /* Soft Red */
+  --destructive-foreground: #FFFFFF;
+
+  --border: #E8E6df;
+  --input: #F2F0E9;
+  --ring: #FF8235;
+
+  --radius: 1.5rem; /* 24px */
 }
 
 @theme inline {
@@ -29,6 +40,8 @@
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -42,22 +55,23 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
 
   --font-sans: var(--font-alibaba), system-ui, sans-serif;
   --font-heading: var(--font-shuhei), var(--font-alibaba), sans-serif;
   --font-round: var(--font-fangyuan), var(--font-alibaba), sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 
-  --animate-aurora: aurora 20s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
 
-  @keyframes aurora {
-    0% {
-      background-position: 50% 50%, 50% 50%;
-    }
-
-    100% {
-      background-position: 350% 50%, 350% 50%;
-    }
+  @keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
   }
 }
 
@@ -67,40 +81,61 @@ body {
   font-family: var(--font-sans);
   overflow-x: hidden;
   position: relative;
+  /* Dotted Pattern for texture */
+  background-image: radial-gradient(#E5E0D5 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
-/* Noise Texture */
-body::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: -1;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  mix-blend-mode: overlay;
-}
-
+/* Bubble Card Style */
 .glass-card {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  /* Renaming conceptually but keeping class for compatibility */
+  background: #FFFFFF;
+  border-radius: 24px;
+  border: 1px solid rgba(0,0,0,0.03);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.02);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.08), 0 6px 12px rgba(0,0,0,0.04);
 }
 
 .aurora-bg {
   position: absolute;
-  inset: -50%;
+  top: -10%;
+  right: -10%;
   z-index: -2;
-  background-image:
-    radial-gradient(circle at 50% 50%, rgba(79, 70, 229, 0.15), transparent 50%),
-    radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.1), transparent 50%),
-    radial-gradient(circle at 100% 100%, rgba(168, 85, 247, 0.1), transparent 50%);
-  filter: blur(60px);
-  opacity: 0.6;
-  animation: aurora 20s linear infinite alternate;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(255,130,53,0.15) 0%, rgba(255,205,65,0.1) 40%, transparent 70%);
+  filter: blur(80px);
+  opacity: 0.8;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.aurora-bg::before {
+  content: "";
+  position: absolute;
+  bottom: -20%;
+  left: -50%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(255,205,65,0.2) 0%, rgba(255,130,53,0.05) 50%, transparent 70%);
+  border-radius: 50%;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #E0DDD5;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D0CCC4;
 }

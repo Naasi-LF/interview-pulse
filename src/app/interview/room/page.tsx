@@ -7,7 +7,7 @@ import AuthGuard from "@/components/auth/AuthGuard";
 import { useAuth } from "@/contexts/AuthContext";
 import { createSession, endSession, logTranscript, getSession } from "@/services/sessionService";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, PhoneOff, MessageSquare } from "lucide-react";
+import { Mic, MicOff, PhoneOff, MessageSquare, Loader2 } from "lucide-react";
 import AudioVisualizer from "@/components/interview/AudioVisualizer";
 import { cn } from "@/lib/utils";
 import { getGraphContext } from "@/services/graphRetrievalService";
@@ -150,16 +150,15 @@ Keep your responses concise and conversational.`;
 
     return (
         <AuthGuard>
-            <div className="min-h-screen bg-black/95 flex flex-col relative overflow-hidden text-foreground">
-                <div className="aurora-bg opacity-20" />
+            <div className="min-h-screen bg-[#FDFBF7] flex flex-col relative overflow-hidden text-foreground selection:bg-primary/20">
 
                 {/* Header */}
                 <div className="absolute top-0 w-full p-6 flex justify-between items-center z-50">
-                    <div className="bg-white/5 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 flex items-center gap-2">
-                        <div className={cn("h-2 w-2 rounded-full animate-pulse", status === "connected" ? "bg-green-500" : "bg-yellow-500")} />
-                        <span className="text-xs font-semibold uppercase tracking-wider">{STATUS_MAP[status] || status}</span>
+                    <div className="bg-white/80 backdrop-blur-md px-5 py-2.5 rounded-full shadow-sm border border-black/5 flex items-center gap-2.5">
+                        <div className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-white", status === "connected" ? "bg-green-500" : "bg-yellow-400 animate-pulse")} />
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{STATUS_MAP[status] || status}</span>
                     </div>
-                    <Button variant="destructive" size="sm" onClick={handleEnd} className="rounded-full px-6">
+                    <Button variant="ghost" size="sm" onClick={handleEnd} className="rounded-full px-6 text-red-500 hover:text-red-600 hover:bg-red-50 font-medium">
                         <PhoneOff className="mr-2 h-4 w-4" /> 结束面试
                     </Button>
                 </div>
@@ -167,18 +166,24 @@ Keep your responses concise and conversational.`;
                 {/* Main Visualizer Area */}
                 <div className="flex-1 flex items-center justify-center flex-col relative z-10 w-full">
                     {!hasStarted ? (
-                        <div className="text-center space-y-6">
-                            <div className="w-32 h-32 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4 animate-pulse">
-                                <Mic className="h-12 w-12 text-primary" />
+                        <div className="text-center space-y-8 animate-in fade-in zoom-in duration-500">
+                            <div className="w-40 h-40 rounded-full bg-white shadow-[0_20px_50px_rgba(255,130,53,0.15)] flex items-center justify-center mx-auto mb-6 relative">
+                                <div className="absolute inset-0 rounded-full border-4 border-dashed border-primary/20 animate-spin-slow"></div>
+                                <Mic className="h-16 w-16 text-primary" />
                             </div>
-                            <h2 className="text-2xl font-bold">准备好了吗？</h2>
+                            <h2 className="text-3xl font-black font-heading tracking-tight text-foreground">准备好了吗？</h2>
+                            <p className="text-muted-foreground max-w-md mx-auto">深呼吸。这里只有一个很友好的 AI，随时准备陪你练习。</p>
                             <Button
                                 size="lg"
                                 onClick={handleStart}
                                 disabled={isInitializing}
-                                className="rounded-full px-8 py-6 text-lg min-w-[200px]"
+                                className="rounded-full px-12 py-7 text-xl font-bold min-w-[240px] shadow-xl hover:shadow-2xl shadow-primary/20 hover:-translate-y-1 transition-all"
                             >
-                                {isInitializing ? "正在初始化..." : "开始面试"}
+                                {isInitializing ? (
+                                    <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> 连接中...</>
+                                ) : (
+                                    "开始面试"
+                                )}
                             </Button>
                         </div>
                     ) : (
@@ -188,57 +193,58 @@ Keep your responses concise and conversational.`;
                         </div>
                     )}
 
-                    {/* Subtitles Overlay - Single Line */}
+                    {/* Subtitles Overlay - Single Line - Headspace Bubble Style */}
                     {hasStarted && showCaptions && transcript.length > 0 && (
                         <div className="absolute bottom-32 left-0 right-0 px-8 flex justify-center pointer-events-none z-50">
                             <div className={cn(
-                                "backdrop-blur-md px-8 py-4 rounded-full max-w-2xl text-center shadow-2xl transition-all duration-300 border border-white/10 overflow-hidden whitespace-nowrap",
-                                transcript[transcript.length - 1].startsWith("AI:") ? "bg-cyan-950/60" : "bg-black/60"
+                                "backdrop-blur-xl px-8 py-5 rounded-[2rem] max-w-3xl text-center shadow-[0_8px_40px_rgba(0,0,0,0.08)] transition-all duration-300 border border-white/50 overflow-hidden whitespace-nowrap",
+                                transcript[transcript.length - 1].startsWith("AI:") ? "bg-white/95" : "bg-gray-50/95"
                             )}>
                                 <p className={cn(
-                                    "text-2xl font-medium tracking-wide",
-                                    transcript[transcript.length - 1].startsWith("AI:") ? "text-cyan-100" : "text-white/90"
+                                    "text-2xl font-bold tracking-tight",
+                                    transcript[transcript.length - 1].startsWith("AI:") ? "text-primary" : "text-gray-600"
                                 )}>
-                                    {/* Use slice to keep it single line if it gets too long, user requested 'refresh' but keeping it simple for now and ensuring one line */}
-                                    {transcript[transcript.length - 1].replace(/^(AI: |You: )/, "").slice(-25)}
+                                    {/* Use slice to keep it single line */}
+                                    {transcript[transcript.length - 1].replace(/^(AI: |You: )/, "").slice(-35)}
                                 </p>
                             </div>
                         </div>
                     )}
 
                     {error && (
-                        <div className="mt-8 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-200">
+                        <div className="mt-8 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 shadow-sm font-medium">
                             Error: {error}
                         </div>
                     )}
                 </div>
 
-                {/* Controls */}
+                {/* Controls - Floating Bar */}
                 {hasStarted && (
-                    <div className="p-8 pb-12 flex justify-center gap-6 z-50">
+                    <div className="p-8 pb-12 flex justify-center gap-8 z-50">
                         <Button
-                            variant={isMicOn ? "secondary" : "destructive"}
+                            variant={isMicOn ? "default" : "destructive"}
                             size="icon"
-                            className="h-14 w-14 rounded-full shadow-lg"
+                            className={cn(
+                                "h-16 w-16 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.1)] transition-all duration-300 hover:scale-110",
+                                isMicOn ? "bg-white text-primary hover:bg-white border-2 border-transparent" : "bg-red-500 text-white hover:bg-red-600"
+                            )}
                             onClick={toggleMic}
                         >
-                            {isMicOn ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
+                            {isMicOn ? <Mic className="h-7 w-7" /> : <MicOff className="h-7 w-7" />}
                         </Button>
 
                         {/* Captions Toggle */}
                         <Button
-                            variant={showCaptions ? "secondary" : "ghost"}
+                            variant="ghost"
                             size="icon"
                             className={cn(
-                                "h-14 w-14 rounded-full shadow-lg transition-colors border-2",
-                                showCaptions
-                                    ? "bg-white text-black hover:bg-white/90 border-transparent"
-                                    : "bg-transparent text-white/50 border-white/20 hover:bg-white/10 hover:text-white"
+                                "h-16 w-16 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.05)] transition-all duration-300 hover:scale-110 bg-white",
+                                showCaptions ? "text-primary border-2 border-primary/20" : "text-gray-400 hover:text-gray-600"
                             )}
                             onClick={() => setShowCaptions(!showCaptions)}
                             title={showCaptions ? "隐藏字幕" : "显示字幕"}
                         >
-                            <MessageSquare className="h-6 w-6" />
+                            <MessageSquare className="h-7 w-7" />
                         </Button>
                     </div>
                 )}

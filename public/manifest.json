@@ -1,0 +1,17 @@
+{
+    "name": "InterviewPulse",
+    "short_name": "InterviewPulse",
+    "description": "AI 驱动的专业面试练习助手",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#FDFBF7",
+    "theme_color": "#FDFBF7",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "/favicon.ico",
+            "sizes": "64x64 32x32 24x24 16x16",
+            "type": "image/x-icon"
+        }
+    ]
+}

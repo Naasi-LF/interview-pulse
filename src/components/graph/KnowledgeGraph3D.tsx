@@ -56,42 +56,42 @@ export default function KnowledgeGraph3D() {
     }, []);
 
     return (
-        <div className="relative w-full h-screen bg-black overflow-hidden">
+        <div className="relative w-full h-screen bg-background overflow-hidden highlight-graph-bg">
 
             {/* Controls Overlay */}
             <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
-                <Button variant="secondary" size="icon" onClick={fetchData} title="Refresh Graph">
+                <Button variant="secondary" size="icon" onClick={fetchData} title="Refresh Graph" className="shadow-lg hover:shadow-xl bg-white text-foreground hover:bg-white/90">
                     <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 </Button>
-                <Button variant="secondary" size="icon" onClick={() => fgRef.current.zoomToFit(1000)} title="Reset View">
+                <Button variant="secondary" size="icon" onClick={() => fgRef.current.zoomToFit(1000)} title="Reset View" className="shadow-lg hover:shadow-xl bg-white text-foreground hover:bg-white/90">
                     <ZoomOut className="h-4 w-4" />
                 </Button>
             </div>
 
-            {/* Description Tooltip (Top Left) - Dynamic */}
+            {/* Description Tooltip (Top Left) - Dynamic - Bubble Style */}
             {hoverNode && hoverNode.description && (
-                <div className="absolute top-20 left-8 z-50 max-w-sm p-4 bg-black/60 backdrop-blur-xl rounded-xl border border-primary/30 text-white animate-in slide-in-from-left-4 fade-in duration-200 pointer-events-none">
-                    <div className="text-lg font-bold text-primary mb-1">{hoverNode.name}</div>
-                    <div className="text-sm text-gray-200 leading-relaxed">{hoverNode.description}</div>
-                    <div className="mt-2 text-xs text-muted-foreground uppercase tracking-wider">{hoverNode.label}</div>
+                <div className="absolute top-20 left-8 z-50 max-w-sm p-6 bg-white/90 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border-none animate-in slide-in-from-left-4 fade-in duration-300 pointer-events-none">
+                    <div className="text-xl font-black font-heading text-primary mb-2">{hoverNode.name}</div>
+                    <div className="text-sm text-foreground/80 leading-relaxed font-medium">{hoverNode.description}</div>
+                    <div className="mt-3 inline-block px-3 py-1 rounded-full bg-gray-100 text-xs text-muted-foreground font-bold uppercase tracking-wider">{hoverNode.label}</div>
                 </div>
             )}
 
-            {/* Legend Overlay */}
-            <div className="absolute bottom-8 left-8 z-50 p-4 bg-black/40 backdrop-blur-md rounded-lg border border-white/10 pointer-events-none">
-                <h3 className="text-white font-bold mb-2">Knowledge Map</h3>
-                <div className="space-y-2 text-xs">
-                    <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-green-400 block shadow-[0_0_10px_#4ade80]"></span>
-                        <span className="text-gray-200">Expert (Mastery)</span>
+            {/* Legend Overlay - Minimal Pill Style */}
+            <div className="absolute bottom-8 left-8 z-50 p-6 bg-white/80 backdrop-blur-md rounded-3xl shadow-lg border border-white/50 pointer-events-none">
+                <h3 className="text-foreground font-black font-heading mb-3 text-lg">Knowledge Map</h3>
+                <div className="space-y-3 text-sm font-medium">
+                    <div className="flex items-center gap-3">
+                        <span className="w-4 h-4 rounded-full bg-green-400 block shadow-md shadow-green-200"></span>
+                        <span className="text-muted-foreground">Expert (Mastery)</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-yellow-400 block shadow-[0_0_10px_#facc15]"></span>
-                        <span className="text-gray-200">Intermediate (Practice)</span>
+                    <div className="flex items-center gap-3">
+                        <span className="w-4 h-4 rounded-full bg-yellow-400 block shadow-md shadow-yellow-200"></span>
+                        <span className="text-muted-foreground">Intermediate (Practice)</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-red-400 block shadow-[0_0_10px_#f87171]"></span>
-                        <span className="text-gray-200">Beginner (Focus Area)</span>
+                    <div className="flex items-center gap-3">
+                        <span className="w-4 h-4 rounded-full bg-red-400 block shadow-md shadow-red-200"></span>
+                        <span className="text-muted-foreground">Beginner (Focus Area)</span>
                     </div>
                 </div>
             </div>
@@ -105,25 +105,36 @@ export default function KnowledgeGraph3D() {
                     nodeColor="color"
                     nodeVal="val"
 
-                    // Visuals
-                    backgroundColor="#000000"
+                    // Visuals - Light Mode Background
+                    backgroundColor="#FFFCF5"
                     showNavInfo={false}
 
                     // Particles on Links (Data flow effect)
                     linkDirectionalParticles={2}
                     linkDirectionalParticleWidth={2}
                     linkDirectionalParticleSpeed={0.005}
+                    // Make links distinct in light mode
+                    linkColor={() => "rgba(0,0,0,0.1)"}
+                    linkWidth={1}
 
                     // Interaction
                     onNodeClick={handleNodeClick}
                     onNodeHover={handleNodeHover} // Added Hover Handler
 
+                    // Fog for depth
+                    rendererConfig={{ antialias: true, alpha: true }}
+
                     nodeThreeObjectExtend={true}
                     nodeResolution={64}
                     nodeThreeObject={(node: any) => {
                         const sprite = new SpriteText(node.name);
+                        // Ensure text is readable against light background
+                        // If node is light color (yellow/green), text needs contrast. 
+                        // But standard node colors are readable.
                         sprite.color = node.color;
                         sprite.textHeight = 6;
+                        sprite.strokeColor = "white"; // White stroke for legibility
+                        sprite.strokeWidth = 1;
                         sprite.position.y = 12; // Floating above the node
                         return sprite;
                     }}

@@ -13,7 +13,7 @@ export default function GraphPage() {
                 {/* Back Button Overlay */}
                 <div className="absolute top-4 left-4 z-50">
                     <Link href="/dashboard">
-                        <Button variant="ghost" className="bg-black/20 backdrop-blur hover:bg-black/40 text-white">
+                        <Button variant="ghost" className="rounded-full bg-white/80 backdrop-blur hover:bg-white text-foreground shadow-sm">
                             <ArrowLeft className="mr-2 h-4 w-4" /> 返回仪表盘
                         </Button>
                     </Link>

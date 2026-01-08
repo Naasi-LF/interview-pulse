@@ -27,6 +27,18 @@ const alimamaFangYuan = localFont({
 export const metadata: Metadata = {
   title: "InterviewPulse",
   description: "Minimalist Luxury AI Interview Preparation",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "InterviewPulse",
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({
