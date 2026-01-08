@@ -215,9 +215,6 @@ export async function generateDebrief(sessionId: string) {
                    - If a NEW important skill appeared that is NOT in the list, you may include it, but prioritize existing nodes.
                    - \`new_score\`: 85+ for strong demonstration, <50 for weak spots.
                 - \`improvements\`: Provide **at least 3 to 5** specific improvement items.
-                   - \`better_answer_example\`: **REQUIRED.** Write a "Gold Standard" answer (2-3 sentences) that the candidate *should have said*.
-                   - \`micro_exercise\`: **REQUIRED.** A specific, actionable practice task (e.g. "Write a function to...").
-                   - **Do not leave these fields empty.**
                 - CRITICAL: ALL SCORES (overall, role_fit, etc.) MUST BE ON A SCALE OF 0-100.
                 - If transcript is short (< 2 turns), provide low scores and explain in notes_if_low_data.
                 `

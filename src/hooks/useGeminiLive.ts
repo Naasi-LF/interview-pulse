@@ -48,15 +48,30 @@ export function useGeminiLive({ onTranscriptUpdate }: UseGeminiLiveProps = {}) {
 
     const connect = async (config?: { manualKey?: string; systemInstruction?: string }) => {
         try {
-            const apiKey = config?.manualKey || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+            setStatus("connecting");
+
+            let apiKey = config?.manualKey;
+
             if (!apiKey) {
-                setStatus("Error: API Key not provided (env: NEXT_PUBLIC_GEMINI_API_KEY)");
+                // Securely fetch ephemeral token from backend
+                try {
+                    const tokenRes = await fetch("/api/gemini-token");
+                    if (!tokenRes.ok) throw new Error("Failed to fetch token");
+                    const tokenData = await tokenRes.json();
+                    apiKey = tokenData.token;
+                } catch (tokenErr) {
+                    console.error("Token fetch failed, falling back to public key if available", tokenErr);
+                    // Fallback to Env if token fails (for local dev or if configured)
+                    apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+                }
+            }
+
+            if (!apiKey) {
+                setStatus("Error: API Key/Token could not be retrieved");
                 return;
             }
 
             clientRef.current = new GoogleGenAI({ apiKey });
-
-            setStatus("connecting");
 
             // Resume output context (browsers block audio until interaction)
             if (outputAudioContextRef.current?.state === 'suspended') {
