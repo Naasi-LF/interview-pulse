@@ -6,7 +6,15 @@ import { createBlob, decode, decodeAudioData } from "@/lib/audio-utils";
 export interface UseGeminiLiveProps {
     onTranscriptUpdate?: (role: "user" | "model", text: string) => void;
 }
-
+/**
+ * Hook: useGeminiLive (实时语音交互核心 Hook)
+ * ----------------------------------------
+ * @description
+ * 封装了与 Gemini Multimodal Live API 进行 WebSocket 全双工通信的所有逻辑。
+ * 管理音频采集 (Mic)、音频播放 (Speaker)、以及实时字幕的状态。
+ *
+ * @param onTranscriptUpdate - 回调函数，用于将实时字幕同步给外部组件（如写入数据库）。
+ */
 export function useGeminiLive({ onTranscriptUpdate }: UseGeminiLiveProps = {}) {
     const [status, setStatus] = useState("idle");
     const [transcript, setTranscript] = useState<string[]>([]);
@@ -46,6 +54,20 @@ export function useGeminiLive({ onTranscriptUpdate }: UseGeminiLiveProps = {}) {
         }
     }, []);
 
+
+    /**
+     * 建立 WebSocket 连接 (Establish Connection)
+     * ----------------------------------------
+     * @description
+     * 1. 安全获 Token (Fetch Token)
+     * 2. 初始化 Gemini Client
+     * 3. 建立 WebSocket 握手 (Handshake)
+     * 4. 关键：注入 System Instruction (面试官人设 + 知识图谱背景)
+     * 
+     * @technical_detail
+     * 使用 GoogleGenAI SDK 的 `client.live.connect` 方法，该方法底层维护了一个 
+     * 长连接 (Persistent Connection)，用于双向流式传输数据。
+     */
     const connect = async (config?: { manualKey?: string; systemInstruction?: string }) => {
         try {
             setStatus("connecting");
@@ -179,6 +201,17 @@ export function useGeminiLive({ onTranscriptUpdate }: UseGeminiLiveProps = {}) {
         }
     };
 
+    /**
+ * 开始录音 (Start Recording)
+ * ----------------------------------------
+ * @description
+ * 激活麦克风，使用 ScriptProcessorNode 实时捕获 PCM 数据，
+ * 并通过 WebSocket 推送给 Gemini。
+ *
+ * @technical_detail
+ * 没有使用 MediaRecorder (文件式录音)，而是直接处理 Raw PCM Stream，
+ * 实现了真正的实时流式传输 (Real-time Streaming)。
+ */
     const startRecording = async () => {
         if (isRecordingRef.current || !inputAudioContextRef.current || !inputNodeRef.current) return;
 
@@ -226,6 +259,13 @@ export function useGeminiLive({ onTranscriptUpdate }: UseGeminiLiveProps = {}) {
         }
     };
 
+    /**
+     * 停止录音 (Stop Recording)
+     * ----------------------------------------
+     * @description
+     * 停止麦克风采集，断开 ScriptProcessorNode 连接，
+     * 并更新状态为 "Recording Stopped"。
+     */
     const stopRecording = () => {
         isRecordingRef.current = false;
         scriptProcessorNodeRef.current?.disconnect();
@@ -234,7 +274,13 @@ export function useGeminiLive({ onTranscriptUpdate }: UseGeminiLiveProps = {}) {
     };
 
     const [error, setError] = useState<string | null>(null);
-
+    /**
+     * 断开连接 (Disconnect)
+     * ----------------------------------------
+     * @description
+     * 彻底关闭 WebSocket 会话，清理所有状态。
+     * 通常在组件卸载 (Unmount) 或用户点击“挂断”时调用。
+     */
     const disconnect = async () => {
         if (sessionRef.current) {
             try {

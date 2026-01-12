@@ -2,7 +2,10 @@ import { GoogleGenAI } from "@google/genai";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { updateSkillMastery } from "./graphExtractionService";
-
+// Define the Schema for structured output
+// 定义复盘报告的严格 JSON Schema。
+// Google Gemini 支持 "Controlled Generation" (可控生成)，通过预定义 Schema，
+// 强制模型返回完全符合此结构的 JSON 数据，杜绝幻觉和格式错误。
 // Define the Schema for structured output
 const DEBRIEF_SCHEMA = {
     type: "OBJECT",
@@ -126,7 +129,17 @@ const DEBRIEF_SCHEMA = {
     },
     required: ["session_summary", "conversation_summary", "scores", "strengths", "improvements", "delivery_metrics", "moments_that_mattered", "q_and_a", "skill_updates", "next_interview_checklist"]
 };
-
+/**
+ * 生成面试复盘报告 (Generate Interview Debrief)
+ * -----------------------------------------
+ * @description
+ * 这是一个资源密集型的后端核心函数。
+ * 它串联了 Firestore（获取对话上下文）、Neo4j（获取技能上下文）和 Gemini（执行分析）。
+ * 实现了“数据闭环”的核心逻辑：根据面试表现自动更新知识图谱。
+ *
+ * @param sessionId - 面试会话 ID
+ * @returns {object} - 解析后的复盘 JSON 数据
+ */
 export async function generateDebrief(sessionId: string) {
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
